@@ -1,15 +1,15 @@
 #!/bin/bash
 #=================================================================================#
 #        Automated Server Configuration for Magento 2                             #
-#        Copyright (C) 2018 admin@magenx.com                                      #
+#        Copyright (C) 2019 admin@magenx.com                                      #
 #        All rights reserved.                                                     #
 #=================================================================================#
 SELF=$(basename $0)
-MAGENX_VER="21.0.5"
+MAGENX_VER="21.0.7"
 MAGENX_BASE="https://magenx.sh"
 
 ###################################################################################
-###                       DEFINE LINKS AND PACKAGES STARTS                      ###
+###                            DEFINE LINKS AND PACKAGES                        ###
 ###################################################################################
 
 # Magento
@@ -22,7 +22,7 @@ WEBMIN_NGINX="https://github.com/magenx/webmin-nginx/archive/nginx-0.08.wbm__0.t
 WEBMIN_FAIL2BAN="http://download.webmin.com/download/modules/fail2ban.wbm.gz"
 
 # Repositories
-REPO_PERCONA="https://www.percona.com/redir/downloads/percona-release/redhat/percona-release-0.1-4.noarch.rpm"
+REPO_PERCONA="https://repo.percona.com/yum/percona-release-latest.noarch.rpm"
 REPO_MYSQL="https://dev.mysql.com/get/mysql80-community-release-el7-1.noarch.rpm"
 REPO_REMI="http://rpms.famillecollet.com/enterprise/remi-release-7.rpm"
 REPO_FAN="http://www.city-fan.org/ftp/contrib/yum-repo/city-fan.org-release-2-1.rhel7.noarch.rpm"
@@ -63,7 +63,7 @@ BOLD="\e[1m"
 RESET="\e[0m"
 
 ###################################################################################
-###                            MESSAGES ECHO DESIGN                             ###
+###                            ECHO MESSAGES DESIGN                             ###
 ###################################################################################
 
 function WHITETXT() {
@@ -157,7 +157,7 @@ done }
 
 clear
 ###################################################################################
-###                                  START CHECKS                               ###
+###                                  START CHECKING                             ###
 ###################################################################################
 
 echo
@@ -174,12 +174,12 @@ fi
 
 # check if webstack is clean
 if ! grep -q "webstack_is_clean" /root/magenx/.webstack >/dev/null 2>&1 ; then
-installed_packages="$(rpm -qa --qf '%{name}\n' 'mysqld?|Percona*|maria*|php-?|nginx*|*ftp*|varnish*|certbot*|redis*|webmin')"
+installed_packages="$(rpm -qa --qf '%{name} ' 'mysqld?|Percona*|maria*|php-?|nginx*|*ftp*|varnish*|certbot*|redis*|webmin')"
   if [ ! -z "$installed_packages" ]; then
   REDTXT  "ERROR: WEBSTACK PACKAGES ALREADY INSTALLED"
   YELLOWTXT "------> YOU NEED TO REMOVE THEM OR RE-INSTALL MINIMAL OS VERSION"
   echo
-  echo "${installed_packages[@]}" | awk '{print "               ",$1}'
+  echo -e "\t\t yum remove ${installed_packages}"
   echo
   echo
   exit 1
@@ -220,7 +220,7 @@ fi
 		if [ "${update_agree}" == "y" ];then
 		mv MAGENX_NEW ${SELF}
 		echo
-                GREENTXT "THE FILE HAS BEEN UPGRADED, PLEASE RUN IT AGAIN"
+                GREENTXT "THE FILE WAS UPGRADED, PLEASE RUN IT AGAIN"
 		echo
                 exit 1
             else
@@ -333,7 +333,7 @@ echo
   WHITETXT "CPU frequency: $freq MHz"
   WHITETXT "Total amount of RAM: $tram MB"
   echo
-  WHITETXT "${BOLD}BENCHMARK RESULTS"
+  WHITETXT "${BOLD}BENCHMARKS RESULTS"
   WHITETXT "I/O speed: ${IO_COLOR}"
   WHITETXT "CPU Time: ${CPU_COLOR}"
 
@@ -364,15 +364,15 @@ if [ "${new_ssh_set}" == "y" ];then
    echo
       cp /etc/ssh/sshd_config /etc/ssh/sshd_config.BACK
       SSHPORT=$(shuf -i 9537-9554 -n 1)
-      read -e -p "---> Enter a new ssh port : " -i "${SSHPORT}" NEW_SSH_PORT
+      read -e -p "---> Enter the new ssh port : " -i "${SSHPORT}" NEW_SSH_PORT
       sed -i "s/.*Port 22/Port ${NEW_SSH_PORT}/g" /etc/ssh/sshd_config
      echo
-        GREENTXT "SSH PORT AND SETTINGS HAS BEEN UPDATED  -  OK"
+        GREENTXT "SSH PORT AND SETTINGS WERE UPDATED  -  OK"
         systemctl restart sshd.service
         ss -tlp | grep sshd
      echo
 echo
-REDTXT "!IMPORTANT: NOW OPEN A NEW SSH SESSION WITH THE NEW PORT!"
+REDTXT "!IMPORTANT: NOW OPEN A NEW SSH SESSION WITH A NEW PORT!"
 REDTXT "!IMPORTANT: DO NOT CLOSE THE CURRENT SESSION!"
 echo
 echo -n "------> Have you logged in another session? [y/n][n]:"
@@ -483,7 +483,7 @@ fi
 echo
 echo
 echo "-------------------------------------------------------------------------------------"
-BLUEBG "| START THE INSTALLATION OF REPOSITORIES AND PACKAGES |"
+BLUEBG "| INSTALLATION OF REPOSITORIES AND PACKAGES |"
 echo "-------------------------------------------------------------------------------------"
 echo
 WHITETXT "============================================================================="
@@ -501,7 +501,7 @@ if [ "${repo_percona_install}" == "y" ];then
       if [ "$?" = 0 ] # if repository installed then install package
         then
           echo
-            GREENTXT "REPOSITORY HAS BEEN INSTALLED  -  OK"
+            GREENTXT "REPOSITORY INSTALLED  -  OK"
               echo
               echo
               GREENTXT "Installation of Percona 5.7 database:"
@@ -515,7 +515,7 @@ if [ "${repo_percona_install}" == "y" ];then
         if [ "$?" = 0 ] # if package installed then configure
           then
             echo
-              GREENTXT "DATABASE HAS BEEN INSTALLED  -  OK"
+              GREENTXT "DATABASE INSTALLED  -  OK"
               echo
               ## plug in service status alert
               cp /usr/lib/systemd/system/mysqld.service /etc/systemd/system/mysqld.service
@@ -540,7 +540,8 @@ if [ "${repo_percona_install}" == "y" ];then
                 echo
               echo
               ## get mysql tools
-	      YELLOWTXT "INSTALL MYSQLTOP, PERCONA-TOOLKIT, MYSQLROUTER"
+	      YELLOWTXT "INSTALL MYSQLTOP, PERCONA-TOOLKIT, MYSQLROUTER, MYSQLTUNER"
+	      wget -qO /usr/local/bin/mysqltuner ${MYSQL_TUNER}
               cd /usr/local/src
               wget -qO - ${MYSQL_TOP} | tar -xzp && cd mytop*
               perl Makefile.PL && make && make install  >/dev/null 2>&1
@@ -583,7 +584,7 @@ gpgkey=file:///etc/pki/rpm-gpg/nginx_signing.key
 gpgcheck=1
 END
             echo
-            GREENTXT "REPOSITORY HAS BEEN INSTALLED  -  OK"
+            GREENTXT "REPOSITORY INSTALLED  -  OK"
             echo
             GREENTXT "Installation of nginx package:"
             echo
@@ -596,7 +597,7 @@ END
       if [ "$?" = 0 ]
         then
           echo
-            GREENTXT "NGINX HAS BEEN INSTALLED  -  OK"
+            GREENTXT "NGINX INSTALLED  -  OK"
             echo
             ## plug in service status alert
             cp /usr/lib/systemd/system/nginx.service /etc/systemd/system/nginx.service
@@ -618,7 +619,7 @@ fi
 echo
 WHITETXT "============================================================================="
 echo
-echo -n "---> Start the Remi repository and PHP 7.1 installation? [y/n][n]:"
+echo -n "---> Start the Remi repository and PHP 7.2 installation? [y/n][n]:"
 read repo_remi_install
 if [ "${repo_remi_install}" == "y" ];then
           echo
@@ -633,7 +634,7 @@ if [ "${repo_remi_install}" == "y" ];then
       if [ "$?" = 0 ]
         then
           echo
-            GREENTXT "REPOSITORY HAS BEEN INSTALLED  -  OK"
+            GREENTXT "REPOSITORY INSTALLED  -  OK"
             echo
             GREENTXT "Installation of PHP 7.2:"
             echo
@@ -646,7 +647,7 @@ if [ "${repo_remi_install}" == "y" ];then
        if [ "$?" = 0 ]
          then
            echo
-             GREENTXT "PHP HAS BEEN INSTALLED  -  OK"
+             GREENTXT "PHP INSTALLED  -  OK"
              ## plug in service status alert
              cp /usr/lib/systemd/system/php-fpm.service /etc/systemd/system/php-fpm.service
              sed -i "s/PrivateTmp=true/PrivateTmp=false/" /etc/systemd/system/php-fpm.service
@@ -674,7 +675,7 @@ if [ "${repo_remi_install}" == "y" ];then
        if [ "$?" = 0 ]
          then
            echo
-             GREENTXT "REDIS HAS BEEN INSTALLED"
+             GREENTXT "REDIS INSTALLED"
              systemctl disable redis >/dev/null 2>&1
              echo
 cat > /etc/systemd/system/redis@.service <<END
@@ -754,7 +755,7 @@ fi
 echo
 WHITETXT "============================================================================="
 echo
-echo -n "---> Start Varnish cache installation? [y/n][n]:"
+echo -n "---> Start Varnish Cache installation? [y/n][n]:"
 read varnish_install
 if [ "${varnish_install}" == "y" ];then
 cat >> /etc/yum.repos.d/varnishcache_varnish52.repo <<END
@@ -793,7 +794,7 @@ echo
 	    wget -qO /etc/systemd/system/varnish.service ${REPO_MAGENX_TMP}varnish.service
             wget -qO /etc/varnish/varnish.params ${REPO_MAGENX_TMP}varnish.params
             systemctl daemon-reload >/dev/null 2>&1
-            GREENTXT "VARNISH 52 HAS BEEN INSTALLED  -  OK"
+            GREENTXT "VARNISH 52 INSTALLED  -  OK"
                else
               echo
             REDTXT "VARNISH INSTALLATION ERROR"
@@ -802,11 +803,6 @@ echo
           echo
             YELLOWTXT "Varnish installation was skipped by the user. Next step"
 fi
-echo
-echo
-echo "-------------------------------------------------------------------------------------"
-BLUEBG "| THE INSTALLATION OF REPOSITORIES AND PACKAGES IS COMPLETE |"
-echo "-------------------------------------------------------------------------------------"
 echo
 echo
 GREENTXT "NOW WE ARE GOING TO CONFIGURE EVERYTHING"
@@ -915,7 +911,7 @@ echo "*         hard    nofile          1000000" >> /etc/security/limits.conf
 echo
 echo
 echo "-------------------------------------------------------------------------------------"
-BLUEBG "| FINISHED PACKAGES INSTALLATION |"
+BLUEBG "| INSTALLATION OF REPOSITORIES AND PACKAGES IS COMPLETED |"
 echo "-------------------------------------------------------------------------------------"
 echo
 echo
@@ -934,8 +930,8 @@ BLUEBG "|   DOWNLOAD MAGENTO ${MAGE_VERSION} (${MAGE_VERSION_FULL})             
 echo "-------------------------------------------------------------------------------------"
 echo
 echo
-     read -e -p "---> ENTER YOUR DOMAIN NAME OR IP ADDRESS: " -i "myshop.com" MAGE_DOMAIN
-     read -e -p "---> ENTER MAGENTO / FTP USER NAME: " -i "myshop" MAGE_WEB_USER
+     read -e -p "---> ENTER YOUR DOMAIN OR IP ADDRESS: " -i "myshop.com" MAGE_DOMAIN
+     read -e -p "---> ENTER MAGENTO FILES USER NAME: " -i "myshop" MAGE_WEB_USER
      MAGE_WEB_ROOT_PATH="/home/${MAGE_WEB_USER}/public_html"
      echo
 	 echo "---> MAGENTO ${MAGE_VERSION} (${MAGE_VERSION_FULL})"
@@ -1036,7 +1032,7 @@ printf "\033c"
 ;;
 
 ###################################################################################
-###                               MAGENTO IINSTALLATION                         ###
+###                               MAGENTO INSTALLATION                         ###
 ###################################################################################
 
 "install")
@@ -1175,6 +1171,8 @@ php_admin_value[memory_limit] = 1024M
 php_admin_value[date.timezone] = ${MAGE_TIMEZONE}
 END
 
+echo "${MAGE_WEB_ROOT_PATH}/app/etc/env.php" >> /etc/php.d/opcache-default.blacklist
+
 systemctl daemon-reload
 echo
 GREENTXT "NGINX SETTINGS"
@@ -1213,11 +1211,18 @@ GREENTXT "PHPMYADMIN INSTALLATION AND CONFIGURATION"
 	 	   
      htpasswd -b -c /etc/nginx/.mysql mysql ${PMA_PASSWD}  >/dev/null 2>&1
      echo
+     systemctl restart nginx.service
 cat >> /root/magenx/.magenx_index <<END
 pma   mysql_${PMA_FOLDER}   mysql   ${PMA_PASSWD}
 END
 echo
 GREENTXT "PROFTPD CONFIGURATION"
+     wget -qO /usr/local/bin/ftpasswd https://raw.githubusercontent.com/proftpd/proftpd/master/contrib/ftpasswd
+     chmod +x /usr/local/bin/ftpasswd
+     MAGE_SUPPORT_USER_PASS=$(head -c 500 /dev/urandom | tr -dc 'a-zA-Z0-9!@#$%^&?=+_[]{}()<>-' | fold -w 15 | head -n 1)
+     MAGE_SUPPORT_USER_ID=$(id -u ${MAGE_WEB_USER})
+     echo "${MAGE_SUPPORT_USER_PASS}" | ftpasswd --uid ${MAGE_SUPPORT_USER_ID} --gid ${MAGE_SUPPORT_USER_ID} --name ${MAGE_WEB_USER}ftp --shell /bin/false --home ${MAGE_WEB_ROOT_PATH} --stdin --passwd --file=/etc/.ftpd.passwd  >/dev/null 2>&1
+     chmod 640 /etc/.ftpd.passwd
      wget -qO /etc/proftpd.conf ${REPO_MAGENX_TMP}proftpd.conf
      ## change proftpd config
      SERVER_IP_ADDR=$(ip route get 1 | awk '{print $NF;exit}')
@@ -1257,23 +1262,24 @@ END
 fi
 echo
 if [ -f /etc/systemd/system/varnish.service ]; then
-GREENTXT "VARNISH CACHE SETTINGS"
+GREENTXT "VARNISH CACHE CONFIGURATION"
     sed -i "s/MAGE_WEB_USER/${MAGE_WEB_USER}/g"  /etc/systemd/system/varnish.service
     systemctl enable varnish.service >/dev/null 2>&1
+    chmod u+x ${MAGE_WEB_ROOT_PATH}/bin/magento
+    php ${MAGE_WEB_ROOT_PATH}/bin/magento varnish:vcl:generate --export-version=5 --output-file=/etc/varnish/default.vcl
     systemctl restart varnish.service
     YELLOWTXT "VARNISH CACHE PORT :8081"
 fi
 echo
-GREENTXT "OPCACHE GUI, n98-MAGERUN, IMAGE OPTIMIZER, MYSQLTUNER, SSL DEBUG TOOLS"
+GREENTXT "DOWNLOADING n98-MAGERUN"
      mkdir -p /opt/magento_saved_scripts
-     wget -qO /opt/magento_saved_scripts/tlstest_$(openssl rand 2 -hex).php ${REPO_MAGENX_TMP}tlstest.php
-     wget -qO /usr/local/bin/wesley.pl ${REPO_MAGENX_TMP}wesley.pl
-     wget -qO /usr/local/bin/mysqltuner ${MYSQL_TUNER}
+     curl -s -o /usr/local/bin/n98-magerun2 https://files.magerun.net/n98-magerun2.phar
 echo
 GREENTXT "SYSTEM AUTO UPDATE WITH YUM-CRON"
 yum-config-manager --enable remi-php72 >/dev/null 2>&1
 yum-config-manager --enable remi >/dev/null 2>&1
 sed -i 's/apply_updates = no/apply_updates = yes/' /etc/yum/yum-cron.conf
+sed -i 's/emit_via = stdio/emit_via = email/' /etc/yum/yum-cron.conf
 sed -i "s/email_from = root@localhost/email_from = yum-cron@${MAGE_DOMAIN}/" /etc/yum/yum-cron.conf
 sed -i "s/email_to = root/email_to = ${MAGE_ADMIN_EMAIL}/" /etc/yum/yum-cron.conf
 systemctl enable yum-cron >/dev/null 2>&1
@@ -1284,7 +1290,7 @@ wget -q https://dl.eff.org/certbot-auto -O /usr/local/bin/certbot-auto
 chmod +x /usr/local/bin/certbot-auto
 certbot-auto --install-only
 certbot-auto certonly --agree-tos --no-eff-email --email ${MAGE_ADMIN_EMAIL} --webroot -w ${MAGE_WEB_ROOT_PATH}/pub/
-systemctl reload nginx
+systemctl reload nginx.service
 echo '45 5 * * 1 root certbot-auto renew --quiet --deploy-hook "systemctl reload nginx" >> /var/log/letsencrypt-renew.log' >> /etc/crontab
 echo
 GREENTXT "GENERATE DHPARAM FOR NGINX SSL"
@@ -1325,30 +1331,9 @@ MAILTO="${MAGE_ADMIN_EMAIL}"
 RULESURL="https://raw.githubusercontent.com/gwillem/magento-malware-scanner/master/build/all-confirmed.yar"
 RULEFILE="/tmp/rules.yar"
 
-/usr/bin/curl -s ${RULESURL} -o ${RULEFILE} && /usr/bin/mwscan --quiet --newonly --rules ${RULEFILE} ${MAGE_WEB_ROOT_PATH}
+/usr/bin/curl -s \${RULESURL} -o \${RULEFILE} && /usr/bin/mwscan --quiet --newonly --rules \${RULEFILE} ${MAGE_WEB_ROOT_PATH}
 END
 echo
-GREENTXT "MALDET MALWARE MONITOR WITH E-MAIL ALERTING"
-YELLOWTXT "warning: infected files will be moved to quarantine"
-cd /usr/local/src
-git clone https://github.com/rfxn/linux-malware-detect.git
-cd linux-malware-detect
-./install.sh > maldet-make-log-file 2>&1
-
-sed -i 's/email_alert="0"/email_alert="1"/' /usr/local/maldetect/conf.maldet
-sed -i "s/you@domain.com/${MAGE_ADMIN_EMAIL}/" /usr/local/maldetect/conf.maldet
-sed -i 's/quarantine_hits="0"/quarantine_hits="1"/' /usr/local/maldetect/conf.maldet
-sed -i 's/inotify_base_watches="16384"/inotify_base_watches="85384"/' /usr/local/maldetect/conf.maldet
-echo -e "${MAGE_WEB_ROOT_PATH%/*}\n\n/var/tmp/\n\n/tmp/" > /usr/local/maldetect/monitor_paths
-
-cp /usr/lib/systemd/system/maldet.service /etc/systemd/system/maldet.service
-sed -i "/^After.*/a OnFailure=service-status-mail@%n.service" /etc/systemd/system/maldet.service
-sed -i "/\[Install\]/i Restart=on-failure\nRestartSec=10\n" /etc/systemd/system/maldet.service
-systemctl daemon-reload
-
-sed -i "/^Example/d" /etc/clamd.d/scan.conf
-sed -i "/^Example/d" /etc/freshclam.conf
-sed -i "/^FRESHCLAM_DELAY/d" /etc/sysconfig/freshclam
 echo
 GREENTXT "GOACCESS REALTIME ACCESS LOG DASHBOARD"
 cd /usr/local/src
@@ -1370,90 +1355,44 @@ GREENTXT "MAGENTO CRONJOBS"
         echo "#* * * * * php -c /etc/php.ini ${MAGE_WEB_ROOT_PATH}/bin/magento setup:cron:run" >> magecron
 ##
 crontab -u ${MAGE_WEB_USER} magecron
+GREENTXT "ROOT CRONJOBS"
 echo "5 8 * * 7 perl /usr/local/bin/mysqltuner --nocolor 2>&1 | mailx -E -s \"MYSQLTUNER WEEKLY REPORT at ${HOSTNAME}\" ${MAGE_ADMIN_EMAIL}" >> rootcron
 echo "30 23 * * * cd /var/log/nginx/; goaccess access.log -a -o access_log_report.html 2>&1 && echo | mailx -s \"Daily access log report at ${HOSTNAME}\" -a access_log_report.html ${MAGE_ADMIN_EMAIL}" >> rootcron
+echo "0 1 * * 1 find ${MAGE_WEB_ROOT_PATH}/pub/ -name '*\.jpg' -type f -mtime -7 -exec jpegoptim -q -s -p --all-progressive -m 65 {} \; >/dev/null 2>&1" >> rootcron
 crontab rootcron
 rm magecron
 rm rootcron
 echo
 GREENTXT "REDIS CACHE AND SESSION STORAGE"
 echo
-sed -i -e '/session/{n;N;N;d}' ${MAGE_WEB_ROOT_PATH}/app/etc/env.php
-sed -i "/.*session.*/a \\
-   array ( \\
-   'save' => 'redis', \\
-   'redis' => \\
-      array ( \\
-        'host' => '127.0.0.1', \\
-        'port' => '6379', \\
-        'password' => '', \\
-        'timeout' => '5', \\
-        'persistent_identifier' => 'db1', \\
-        'database' => '1', \\
-        'compression_threshold' => '2048', \\
-        'compression_library' => 'lzf', \\
-        'log_level' => '1', \\
-        'max_concurrency' => '6', \\
-        'break_after_frontend' => '5', \\
-        'break_after_adminhtml' => '30', \\
-        'first_lifetime' => '600', \\
-        'bot_first_lifetime' => '60', \\
-        'bot_lifetime' => '7200', \\
-        'disable_locking' => '0', \\
-        'min_lifetime' => '60', \\
-        'max_lifetime' => '2592000' \\
-    ), \\
-), \\
-'cache' =>  \\
-  array ( \\
-    'frontend' =>  \\
-    array ( \\
-      'default' =>  \\
-      array ( \\
-        'backend' => 'Cm_Cache_Backend_Redis', \\
-        'backend_options' =>  \\
-        array ( \\
-          'server' => '127.0.0.1', \\
-          'port' => '6380', \\
-          'persistent' => '', \\
-          'database' => '1', \\
-          'force_standalone' => '0', \\
-          'connect_retries' => '2', \\
-          'read_timeout' => '10', \\
-          'automatic_cleaning_factor' => '0', \\
-          'compress_data' => '0', \\
-          'compress_tags' => '0', \\
-          'compress_threshold' => '20480', \\
-          'compression_lib' => 'lzf', \\
-        ), \\
-      ), \\
-      'page_cache' =>  \\
-      array ( \\
-        'backend' => 'Cm_Cache_Backend_Redis', \\
-        'backend_options' =>  \\
-        array ( \\
-          'server' => '127.0.0.1', \\
-          'port' => '6380', \\
-          'persistent' => '', \\
-          'database' => '2', \\
-          'force_standalone' => '0', \\
-          'connect_retries' => '2', \\
-          'read_timeout' => '10', \\
-          'automatic_cleaning_factor' => '0', \\
-          'compress_data' => '1', \\
-          'compress_tags' => '1', \\
-          'compress_threshold' => '20480', \\
-          'compression_lib' => 'lzf', \\
-        ), \\
-      ), \\
-    ), \\
-  ), \\ " ${MAGE_WEB_ROOT_PATH}/app/etc/env.php	
+systemctl start redis.target
+## cache backend
+cd ${MAGE_WEB_ROOT_PATH}
+su ${MAGE_WEB_USER} -s /bin/bash -c "bin/magento setup:config:set \
+--cache-backend=redis \
+--cache-backend-redis-server=127.0.0.1 \
+--cache-backend-redis-port=6380 \
+--cache-backend-redis-db=1 \
+-n"
+## page cache
+su ${MAGE_WEB_USER} -s /bin/bash -c "bin/magento setup:config:set \
+--page-cache=redis \
+--page-cache-redis-server=127.0.0.1 \
+--page-cache-redis-port=6380 \
+--page-cache-redis-db=2 \
+-n"
+## session
+su ${MAGE_WEB_USER} -s /bin/bash -c "bin/magento setup:config:set \
+--session-save=redis \
+--session-save-redis-host=127.0.0.1 \
+--session-save-redis-port=6379 \
+--session-save-redis-log-level=3 \
+--session-save-redis-db=1 \
+-n"
 echo
 systemctl daemon-reload
 systemctl restart nginx.service
 systemctl restart php-fpm.service
-systemctl restart redis@6379
-systemctl restart redis@6380
 
 cd ${MAGE_WEB_ROOT_PATH}
 chown -R ${MAGE_WEB_USER}:${MAGE_WEB_USER} ${MAGE_WEB_ROOT_PATH%/*}
@@ -1463,11 +1402,9 @@ rm -rf var/*
 su ${MAGE_WEB_USER} -s /bin/bash -c "php bin/magento deploy:mode:set developer"
 su ${MAGE_WEB_USER} -s /bin/bash -c "php bin/magento cache:flush"
 su ${MAGE_WEB_USER} -s /bin/bash -c "php bin/magento cache:disable"
-sed -i "s/report/report|${OPCACHE_FILE}_opcache_gui/" /etc/nginx/sites-available/magento2.conf
+
 systemctl restart php-fpm.service
 echo
-curl -s -o /usr/local/bin/n98-magerun2 https://files.magerun.net/n98-magerun2.phar
-chmod u+x bin/magento
 GREENTXT "SAVING COMPOSER JSON AND LOCK"
 cp composer.json ../composer.json.saved
 cp composer.lock ../composer.lock.saved
@@ -1502,8 +1439,10 @@ WHITETXT "[mysql root pass]: ${MYSQL_ROOT_PASS}"
 WHITETXT "[mysql-router port]:" ${ROUTER_PORT}
 echo
 WHITETXT "[ftp port]: ${FTP_PORT}"
-WHITETXT "[ftp user]: ${MAGE_WEB_USER}"
-WHITETXT "[ftp password]: ${MAGE_WEB_USER_PASS}"
+WHITETXT "[ftp master user]: ${MAGE_WEB_USER}"
+WHITETXT "[ftp master user password]: ${MAGE_WEB_USER_PASS}"
+WHITETXT "[ftp support user]: ${MAGE_WEB_USER}ftp"
+WHITETXT "[ftp support user password]: ${MAGE_SUPPORT_USER_PASS}"
 WHITETXT "[ftp allowed geoip]: ${USER_GEOIP}"
 WHITETXT "[ftp allowed ip]: ${USER_IP}"
 echo
@@ -1724,16 +1663,14 @@ EOF
 yum -y -q install wazuh-manager
 echo
 GREENTXT "INSTALLATION OF WAZUH API + NODEJS"
-curl --silent --location https://rpm.nodesource.com/setup_6.x | bash >/dev/null 2>&1
+curl --silent --location https://rpm.nodesource.com/setup_8.x | bash >/dev/null 2>&1
 yum -y -q install nodejs
 yum -y -q install wazuh-api
 echo
 GREENTXT "INSTALLATION OF JAVA 8 JDK RPM:"
 cd /usr/local/src
-curl -Lo jre-8u191-linux-x64.rpm --header "Cookie: oraclelicense=accept-securebackup-cookie" "https://download.oracle.com/otn-pub/java/jdk/8u191-b12/2787e4a523244c269598db4e85c51e0c/jre-8u191-linux-x64.rpm"
-yum -y localinstall jre-8u191-linux-x64.rpm
-export JAVA_HOME=/usr/java/jdk1.8.0_191/jre
-echo "export JAVA_HOME=/usr/java/jdk1.8.0_191/jre" > /etc/profile
+wget --no-cookies --no-check-certificate --header "Cookie: gpw_e24=http%3A%2F%2Fwww.oracle.com%2F; oraclelicense=accept-securebackup-cookie" "https://download.oracle.com/otn-pub/java/jdk/8u202-b08/1961070e4c9b4e26a04e7f5a083f551e/jre-8u202-linux-x64.rpm"
+yum -y localinstall jre-8u202-linux-x64.rpm
 echo
 echo
 GREENTXT "INSTALLATION OF ELASTCSEARCH:"
@@ -1786,7 +1723,7 @@ echo
 echo
 GREENTXT "INSTALLATION OF KIBANA:"
 yum -y -q install kibana
-/usr/share/kibana/bin/kibana-plugin install https://packages.wazuh.com/wazuhapp/wazuhapp-3.7.2_6.5.4.zip
+/usr/share/kibana/bin/kibana-plugin install https://packages.wazuh.com/wazuhapp/wazuhapp-3.8.2_6.7.0.zip
 echo
 systemctl daemon-reload
 systemctl enable kibana.service
@@ -1794,6 +1731,7 @@ systemctl restart kibana.service
 echo
 echo
 yum-config-manager --disable elastic
+yum-config-manager --disable wazuh
 echo
 GREENTXT "OSSEC WAZUH API SETTINGS"
 sed -i 's/.*config.host.*/config.host = "127.0.0.1";/' /var/ossec/api/configuration/config.js
